@@ -3,6 +3,7 @@
 import argparse
 import numpy as np
 from scipy.integrate import cumtrapz
+import pandas as pd
 
 from parser.xvg_parser import extract_dataframe
 
@@ -29,26 +30,64 @@ def main():
     args = parser.parse_args()
 
     # Load the stress tensor
-    print('Reading %s' % args.i)
-    p_ii = extract_dataframe(args.i)
+    # print('Reading %s' % args.i)
 
     components = args.c.split(',')
-    t = p_ii['Time (ps)']
 
-    dt = t.values[1] - t.values[0]
+    dt = 0.002
     print('dt = %f' % dt)
 
-    segments = int(t.values[-1] / args.l)
+    # segments = int(t.values[-1] / args.l)
     seglen = int(args.l / dt)
-    print('Number of segments: %d' % segments)
+    # print('Number of segments: %d' % segments)
 
-    acf = np.zeros(seglen - 1)
-    for c in components:
-        p = p_ii[c]
-        for i in range(segments):
-            print('%s: %d/%d' % (c, i+1, segments))
-            ps = p.values[i*seglen:((i+1)*seglen)]
-            acf += c_fft(ps)[1:] / float(len(components)) / float(segments)
+    sum_acf = np.zeros(seglen - 1)
+
+    segment = 0
+    n = 0
+    with open(args.i, 'r') as f:
+        i = 0
+        names = []
+        rows = []
+        for line in f:
+            line = line.strip()
+            if len(line) == 0:
+                continue
+
+            if "label" in line and "xaxis" in line:
+                xaxis = line.split('"')[-2]
+
+            if line.startswith("@ s") and "subtitle" not in line:
+                name = line.split("legend ")[-1].replace('"','').strip()
+                names.append(name)
+
+            # should catch non-numeric lines so we don't proceed in parsing
+            # here
+            if line.startswith(('#', '@')):
+                continue
+
+            # parse line as floats
+            row = map(float, line.split())
+            rows.append(row)
+
+            if i == seglen - 1:
+                i = -1
+                segment += 1
+
+                cols = [xaxis]
+                cols.extend(names)
+
+                p_ii = pd.DataFrame(rows, columns=cols)
+                rows = []
+
+                for c in components:
+                    print('%s: %d' % (c, segment))
+                    p = p_ii[c]
+                    n += 1
+                    sum_acf += c_fft(p)[1:]
+            i += 1
+
+    acf = sum_acf / float(n)
     t_acf = np.array(range(len(acf))) * dt
 
 
