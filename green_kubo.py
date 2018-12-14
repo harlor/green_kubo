@@ -24,7 +24,7 @@ def main():
     parser.add_argument('-o', '--output', dest='o', help="Output file", type=str)
     parser.add_argument('-c', '--components', dest='c', help="Componenets", type=str, default='Pres-XY,Pres-XZ,Pres-YZ')
     parser.add_argument('-l', '--seglength', dest='l', help="Length of segments in ps", type=float, default=1000.0)
-    parser.add_argument('-V', '--volume', dest='v', help="Volume in nm³", type=float, default=1.0)
+    parser.add_argument('-V', '--volume', dest='v', help="Volume in nm^3", type=float, default=1.0)
     parser.add_argument('-t', '--temperature', dest='t', help="Temperature in K", type=float, default=300.0)
     args = parser.parse_args()
 
