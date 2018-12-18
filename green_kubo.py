@@ -30,18 +30,15 @@ def main():
     args = parser.parse_args()
 
     # Load the stress tensor
-    # print('Reading %s' % args.i)
+    print('Reading %s' % args.i)
 
     components = args.c.split(',')
 
-    dt = 0.002
-    print('dt = %f' % dt)
+    # initialize dt
+    dt = None
 
-    # segments = int(t.values[-1] / args.l)
-    seglen = int(args.l / dt)
-    # print('Number of segments: %d' % segments)
-
-    sum_acf = np.zeros(seglen - 1)
+    seglen = -1
+    sum_acf = np.array([])
 
     segment = 0
     n = 0
@@ -58,7 +55,7 @@ def main():
                 xaxis = line.split('"')[-2]
 
             if line.startswith("@ s") and "subtitle" not in line:
-                name = line.split("legend ")[-1].replace('"','').strip()
+                name = line.split("legend ")[-1].replace('"', '').strip()
                 names.append(name)
 
             # should catch non-numeric lines so we don't proceed in parsing
@@ -69,6 +66,20 @@ def main():
             # parse line as floats
             row = map(float, line.split())
             rows.append(row)
+
+            # Init segment
+            if i == 1 and n == 0:
+                dt = list(rows[1])[0] - list(rows[0])[0]
+                print('dt = %f' % dt)
+                seglen = int(args.l / dt)
+
+                # Seglen threshold
+                if seglen < 2:
+                    seglen = 2
+
+                print('seglen = %d' % seglen)
+
+                sum_acf = np.zeros(seglen - 1)
 
             if i == seglen - 1:
                 i = -1
