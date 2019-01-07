@@ -4,9 +4,7 @@ import argparse
 import numpy as np
 from scipy.integrate import cumtrapz
 import pandas as pd
-
-from parser.xvg_parser import extract_dataframe
-
+import tailer
 
 def c_fft(a):
     n = len(a)
@@ -50,6 +48,10 @@ def main():
 
     # Set normalization to 0
     n = 0
+
+    for ll in tailer.tail(open(args.i), 1):
+        lt = float(list(filter(None, ll.split(' ')))[0])
+        segments = int(lt / args.l)
 
     # Start reading from file
     print('Reading %s' % args.i)
@@ -108,7 +110,7 @@ def main():
 
                 # Calculate auto correlation function for non diagonal components:
                 for c in components:
-                    print('%s: %d' % (c, segment))
+                    print('%s: %d/%d' % (c, segment, segments))
                     p = p_ii[c]
                     n += 2
                     sum_acf += 2 * c_fft(p)[1:]
@@ -119,7 +121,7 @@ def main():
                     # Normalization += 4
                     n += 4
                     for c in dcomponents:
-                        print('%s: %d' % (c, segment))
+                        print('%s: %d/%d' % (c, segment, segments))
                         p = p_ii[c] - sp_ii
                         sum_acf += c_fft(p)[1:]
             i += 1
