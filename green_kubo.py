@@ -5,6 +5,7 @@ import numpy as np
 from scipy.integrate import cumtrapz
 import pandas as pd
 import tailer
+import MDAnalysis
 
 def c_fft(a):
     n = len(a)
@@ -24,9 +25,20 @@ def main():
     parser.add_argument('-c', '--components', dest='c', help="Independent non-diagonal components of the stress tensor", type=str, default='Pres-XY,Pres-XZ,Pres-YZ')
     parser.add_argument('-d', '--dcomponents', dest='d', help="Don't use the diagonal components of the stress", default=True, action='store_false')
     parser.add_argument('-l', '--seglength', dest='l', help="Length of segments in ps", type=float, default=1000.0)
-    parser.add_argument('-V', '--volume', dest='v', help="Volume in nm^3", type=float, default=1.0)
+    parser.add_argument('-g', '--gro', dest='gro', help="Grofile to calculate volume", type=str, default=None)
+    parser.add_argument('-V', '--volume', dest='v', help="Volume in nm^3", type=float, default=None)
     parser.add_argument('-t', '--temperature', dest='t', help="Temperature in K", type=float, default=300.0)
     args = parser.parse_args()
+
+    # Get system volume
+    if args.v is not None:
+        v = args.v
+    elif args.gro is not None:
+        u = MDAnalysis.Universe(args.gro)
+        v = u.dimensions[0] * u.dimensions[1] * u.dimensions[2] / 1000
+    else:
+        raise Exception('No volume given')
+    print('System volume %f' % v)
 
     # Set non diagonal components:
     if args.c == 'None':
@@ -110,7 +122,6 @@ def main():
 
                 # Calculate auto correlation function for non diagonal components:
                 for c in components:
-                    print('%s: %d/%d' % (c, segment, segments))
                     p = p_ii[c]
                     n += 2
                     sum_acf += 2 * c_fft(p)[1:]
@@ -121,9 +132,9 @@ def main():
                     # Normalization += 4
                     n += 4
                     for c in dcomponents:
-                        print('%s: %d/%d' % (c, segment, segments))
                         p = p_ii[c] - sp_ii
                         sum_acf += c_fft(p)[1:]
+                print('Processed %d/%d segments' % (segment, segments))
             i += 1
 
     acf = sum_acf / float(n)
@@ -132,7 +143,7 @@ def main():
     # Prefactor Bar**2 * nm**3 / kB * ps * 1000
     visc_pref = (10 ** 5)**2 * (10 ** -9) ** 3 / 1.381e-23 * 10 ** -12 * 1000
 
-    eta = cumtrapz(acf, dx=dt) * args.v / args.t * visc_pref
+    eta = cumtrapz(acf, dx=dt) * v / args.t * visc_pref
 
     # Save eta:
     print('Write to %s' % args.o)
